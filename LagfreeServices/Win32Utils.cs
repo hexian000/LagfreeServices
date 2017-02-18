@@ -1,7 +1,6 @@
 ﻿using Microsoft.Win32.SafeHandles;
 using System;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 namespace LagfreeServices
@@ -152,7 +151,6 @@ namespace LagfreeServices
 
             public static bool NT_SUCCESS(int NTSTATUS) => NTSTATUS >= 0;
 
-
             // For CreateFile to get handle to drive
             public const uint GENERIC_READ = 0x80000000;
             public const uint GENERIC_WRITE = 0x40000000;
@@ -240,7 +238,7 @@ namespace LagfreeServices
             [DllImport("kernel32.dll", EntryPoint = "DeviceIoControl", SetLastError = true)]
             [return: MarshalAs(UnmanagedType.Bool)]
             public static extern bool DeviceIoControl(SafeFileHandle hDevice, uint dwIoControlCode, ref ATAIdentifyDeviceQuery lpInBuffer, uint nInBufferSize, ref ATAIdentifyDeviceQuery lpOutBuffer, uint nOutBufferSize, out uint lpBytesReturned, IntPtr lpOverlapped);
-            
+
             [DllImport("kernel32.dll", SetLastError = true)]
             [return: MarshalAs(UnmanagedType.Bool)]
             public static extern bool SetProcessWorkingSetSize(SafeProcessHandle hProcess, IntPtr dwMinimumWorkingSetSize, IntPtr dwMaximumWorkingSetSize);
@@ -322,7 +320,7 @@ namespace LagfreeServices
             {
                 hGlobal = Marshal.AllocHGlobal(new IntPtr(sizeof(int)));
                 Marshal.Copy(BitConverter.GetBytes(newPrio), 0, hGlobal, 4);
-                if (!NativeMethods.NT_SUCCESS(NativeMethods.NtSetInformationProcess(hProcess, NativeMethods.PROCESS_INFORMATION_CLASS.ProcessIoPriority, hGlobal, IntPtr.Size)))
+                if (!NativeMethods.NT_SUCCESS(NativeMethods.NtSetInformationProcess(hProcess, NativeMethods.PROCESS_INFORMATION_CLASS.ProcessIoPriority, hGlobal, sizeof(int))))
                     throw GetWin32Exception();
             }
             finally { if (hGlobal != IntPtr.Zero) Marshal.FreeHGlobal(hGlobal); }

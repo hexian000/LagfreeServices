@@ -9,10 +9,7 @@ namespace LagfreeAgent
     {
         public int GetPid()
         {
-            int pid = -1;
-            using (var proc = Process.GetCurrentProcess())
-                pid = proc.Id;
-            return pid;
+            return Process.GetCurrentProcess().Id;
         }
 
         public HashSet<int> Get()

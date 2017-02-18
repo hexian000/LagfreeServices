@@ -8,6 +8,7 @@ using System.IO;
 using System.Runtime.Remoting;
 using System.Runtime.Remoting.Channels;
 using System.Runtime.Remoting.Channels.Ipc;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
@@ -24,9 +25,18 @@ namespace LagfreeInstaller
         public MainWindow()
         {
             InitializeComponent();
-            if (Directory.Exists(App.TargetDir)) InstallButton.IsEnabled = false;
+        }
+
+        private void CheckInstallation()
+        {
+            if (Directory.Exists(App.TargetDir))
+            {
+                InstallButton.IsEnabled = false;
+                UninstallButton.IsEnabled = true;
+            }
             else
             {
+                InstallButton.IsEnabled = true;
                 UninstallButton.IsEnabled = false;
                 foreach (var i in InstallFiles) if (!File.Exists(Path.Combine(App.SourceDir, i.Source)))
                     {
@@ -36,10 +46,23 @@ namespace LagfreeInstaller
             }
         }
 
-        protected override void OnClosing(CancelEventArgs e)
+        private void Window_Loaded(object sender, RoutedEventArgs e)
+        {
+            new Thread(() =>
+            {
+                while (App.ProgramStarted != null)
+                {
+                    if (!App.ProgramStarted.WaitOne(1000)) continue;
+                    Dispatcher.InvokeAsync(() => Activate());
+                    App.ProgramStarted.Reset();
+                }
+            }).Start();
+            CheckInstallation();
+        }
+
+        private void Window_Closing(object sender, CancelEventArgs e)
         {
             e.Cancel = Busy;
-            base.OnClosing(e);
         }
 
         private class InstallFile
@@ -87,6 +110,7 @@ namespace LagfreeInstaller
                     Effect = null;
                     Busy = false;
                     MessageBox.Show("安装完成", "Lagfree Services", MessageBoxButton.OK, MessageBoxImage.Information);
+                    CheckInstallation();
                 });
             }).Start();
         }
@@ -121,6 +145,7 @@ namespace LagfreeInstaller
                     Effect = null;
                     Busy = false;
                     MessageBox.Show("卸载完成", "Lagfree Services", MessageBoxButton.OK, MessageBoxImage.Information);
+                    CheckInstallation();
                 });
             }).Start();
         }

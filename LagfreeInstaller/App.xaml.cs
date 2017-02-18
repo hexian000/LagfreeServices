@@ -4,6 +4,8 @@ using System.Collections;
 using System.Configuration.Install;
 using System.IO;
 using System.Reflection;
+using System.Security.Principal;
+using System.Threading;
 using System.Windows;
 
 namespace LagfreeInstaller
@@ -15,8 +17,12 @@ namespace LagfreeInstaller
     {
         internal static string SourceDir, TargetDir, ExePath;
 
+        internal static EventWaitHandle ProgramStarted;
+
         protected override void OnStartup(StartupEventArgs e)
         {
+            if (!IsAdministrator()) Environment.Exit(0);
+
             using (RegistryKey ndpKey = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full\"))
             {
                 object versionCode = 0;
@@ -54,7 +60,25 @@ namespace LagfreeInstaller
                 }
                 Environment.Exit(0);
             }
+
+            // 尝试创建一个命名事件
+            ProgramStarted = new EventWaitHandle(false, EventResetMode.AutoReset, "LagfreeInstaller", out bool createNew);
+
+            // 如果该命名事件已经存在(存在有前一个运行实例)，则发事件通知并退出
+            if (!createNew)
+            {
+                ProgramStarted.Set();
+                Environment.Exit(0);
+            }
+
             base.OnStartup(e);
+        }
+
+        protected override void OnExit(ExitEventArgs e)
+        {
+            ProgramStarted.Dispose();
+            ProgramStarted = null;
+            base.OnExit(e);
         }
 
         private void Install(string TargetDir)
@@ -74,6 +98,13 @@ namespace LagfreeInstaller
                 Hashtable InsState = new Hashtable();
                 AsmInst.Uninstall(InsState);
             }
+        }
+
+        public static bool IsAdministrator()
+        {
+            WindowsIdentity identity = WindowsIdentity.GetCurrent();
+            WindowsPrincipal principal = new WindowsPrincipal(identity);
+            return principal.IsInRole(WindowsBuiltInRole.Administrator);
         }
     }
 }

@@ -88,10 +88,10 @@ namespace LagfreeServices
         private void InternalDispose()
         {
             InternalPause();
-            lock (SafeAsyncLock) Disk.Dispose();
+            lock (SafeAsyncLock) Disk?.Dispose();
             Disk = null;
-            RevertAll();
-            RestrainedCount.Dispose();
+            if (Restrained != null) RevertAll();
+            RestrainedCount?.Dispose();
             RestrainedCount = null;
             Restrained = null;
             LastCounts = null;
@@ -127,7 +127,6 @@ namespace LagfreeServices
         }
         private Dictionary<int, RestrainedProcess> Restrained;
         private SortedDictionary<int, IO_COUNTERS> LastCounts;
-        private SortedDictionary<int, Process> LastProcs;
 
         private void UsageCheck(object state)
         {
@@ -193,19 +192,23 @@ namespace LagfreeServices
                 string pname = "<unknown>";
                 try
                 {
-                    if (i.Value.Revert) if (!i.Value.Process.HasExited)
+                    if (i.Value.Revert)
+                    {
+                        if (i.Value.Process.HasExited)
+                            i.Value.Process.Dispose();
+                        else
                         {
                             pname = i.Value.Process.ProcessName;
                             SafeProcessHandle hProc = i.Value.Process.SafeHandle;
                             SetIOPriority(hProc, i.Value.OriginalIoPriority);
                             log.AppendLine($"已恢复进程。 进程{i.Key} \"{pname}\"");
                         }
+                    }
                 }
                 catch (Exception ex)
                 {
                     WriteLogEntry(2003, $"恢复进程时发生错误。 进程{i.Key} \"{pname}\"{Environment.NewLine}{ex.GetType().Name}：{ex.Message}", true);
                 }
-                finally { i.Value.Process?.Dispose(); }
             }
             Restrained.Clear();
             RestrainedCount.RawValue = 0;
@@ -217,6 +220,11 @@ namespace LagfreeServices
             List<KeyValuePair<int, long>> IOBytes;
             SortedDictionary<int, IO_COUNTERS> Counts = new SortedDictionary<int, IO_COUNTERS>();
             HashSet<int> IgnoredPids = Lagfree.GetForegroundPids();
+            //{
+            //    StringBuilder sb = new StringBuilder();
+            //    foreach (var i in IgnoredPids) sb.AppendLine("pid:" + i);
+            //    WriteLogEntry(3001, sb.ToString());
+            //}
             Process[] procs = Process.GetProcesses();
             IOBytes = new List<KeyValuePair<int, long>>(procs.Length);
             foreach (var proc in procs)
@@ -242,7 +250,9 @@ namespace LagfreeServices
                         }
                     }
                 }
-                catch { }
+                catch (Win32Exception) { }
+                catch (InvalidOperationException) { }
+                catch (Exception ex) { WriteLogEntry(3000, ex.GetType().Name + ":" + ex.Message + "\n" + ex.StackTrace, true); }
             }
             IOBytes.Sort(new Comparison<KeyValuePair<int, long>>((x, y) => Math.Sign(y.Value - x.Value)));
             LastCounts = Counts;

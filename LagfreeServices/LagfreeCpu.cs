@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.ServiceProcess;
 using System.Text;
@@ -67,10 +68,10 @@ namespace LagfreeServices
         private void InternalDispose()
         {
             InternalPause();
-            CpuIdle.Dispose();
+            CpuIdle?.Dispose();
             CpuIdle = null;
-            RevertAll();
-            RestrainedCount.Dispose();
+            if (Restrained != null) RevertAll();
+            RestrainedCount?.Dispose();
             RestrainedCount = null;
             Restrained = null;
             LastCounts = null;
@@ -121,8 +122,8 @@ namespace LagfreeServices
                 long prevTime = -1;
                 foreach (var i in CpuTimes)
                 {
-                    long cputime = i.Key;
-                    int pid = i.Value;
+                    int pid = i.Key;
+                    long cputime = i.Value;
 
                     if (cputime < 100 || Restrained.ContainsKey(pid)) continue;
                     if (prevTime >= 0) { if ((double)cputime / prevTime < 0.8) continue; }
@@ -134,7 +135,7 @@ namespace LagfreeServices
                     // Restrain process
                     try
                     {
-                        proc = Process.GetProcessById(i.Value);
+                        proc = Process.GetProcessById(i.Key);
                         pname = proc.ProcessName;
                         rproc.OriginalPriorityClass = proc.PriorityClass;
                         if (rproc.OriginalPriorityClass != ProcessPriorityClass.Idle)
@@ -170,20 +171,21 @@ namespace LagfreeServices
                 string pname = "<unknown>";
                 try
                 {
-                    if (i.Value.Revert) if (!i.Value.Process.HasExited)
+                    if (i.Value.Revert)
+                    {
+                        if (i.Value.Process.HasExited)
+                            i.Value.Process.Dispose();
+                        else
                         {
                             pname = i.Value.Process.ProcessName;
                             i.Value.Process.PriorityClass = i.Value.OriginalPriorityClass;
                             log.AppendLine($"已恢复进程。 进程{i.Key} \"{pname}\"");
                         }
+                    }
                 }
                 catch (Exception ex)
                 {
                     WriteLogEntry(2003, $"恢复进程时发生错误。 进程{i.Key} \"{pname}\"{Environment.NewLine}{ex.GetType().Name}：{ex.Message}", true);
-                }
-                finally
-                {
-                    i.Value.Process?.Dispose();
                 }
             }
             Restrained.Clear();
@@ -191,13 +193,13 @@ namespace LagfreeServices
             if (log.Length > 0) WriteLogEntry(1002, log.ToString());
         }
 
-        private List<KeyValuePair<long, int>> ObtainPerProcessUsage()
+        private List<KeyValuePair<int, long>> ObtainPerProcessUsage()
         {
-            List<KeyValuePair<long, int>> CpuCounts;
+            List<KeyValuePair<int, long>> CpuCounts;
             SortedDictionary<int, long> Counts = new SortedDictionary<int, long>();
             HashSet<int> IgnoredPids = Lagfree.GetForegroundPids();
             Process[] procs = Process.GetProcesses();
-            CpuCounts = new List<KeyValuePair<long, int>>(procs.Length);
+            CpuCounts = new List<KeyValuePair<int, long>>(procs.Length);
             foreach (var proc in procs)
             {
                 try
@@ -206,15 +208,17 @@ namespace LagfreeServices
                     if (pid == 0 || pid == 4 || pid == Lagfree.MyPid || pid == Lagfree.AgentPid
                         || IgnoredPids.Contains(pid)
                         || Lagfree.IgnoredProcessNames.Contains(proc.ProcessName)) continue;
+                    proc.Refresh();
                     long ptime = (long)proc.TotalProcessorTime.TotalMilliseconds;
                     Counts.Add(pid, ptime);
                     if (LastCounts.ContainsKey(pid))
-                        CpuCounts.Add(new KeyValuePair<long, int>(ptime - LastCounts[pid], pid));
+                        CpuCounts.Add(new KeyValuePair<int, long>(pid, ptime - LastCounts[pid]));
                 }
-                catch (Exception) { }
-                finally { proc.Dispose(); }
+                catch (Win32Exception) { }
+                catch (InvalidOperationException) { }
+                catch (Exception ex) { WriteLogEntry(3000, ex.GetType().Name + ":" + ex.Message + "\n" + ex.StackTrace, true); }
             }
-            CpuCounts.Sort(new Comparison<KeyValuePair<long, int>>((x, y) => Math.Sign((y.Key - x.Key))));
+            CpuCounts.Sort(new Comparison<KeyValuePair<int, long>>((x, y) => Math.Sign((y.Value - x.Value))));
             LastCounts = Counts;
             return CpuCounts;
         }
