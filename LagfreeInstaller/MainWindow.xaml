@@ -1,0 +1,14 @@
+﻿<Window x:Class="LagfreeInstaller.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:LagfreeInstaller"
+        mc:Ignorable="d"
+        Title="Lagfree Services Installer" Height="247.414" Width="440.523" ResizeMode="CanMinimize" WindowStartupLocation="CenterScreen" Background="White" Foreground="Black">
+    <Grid>
+        <Button x:Name="InstallButton" Content="安装" VerticalAlignment="Top" Margin="10,10,10,0" Height="91" Click="InstallButton_Click"/>
+        <Button x:Name="UninstallButton" Content="卸载" Margin="10,0,10,10" Click="UninstallButton_Click" Height="91" VerticalAlignment="Bottom"/>
+
+    </Grid>
+</Window>

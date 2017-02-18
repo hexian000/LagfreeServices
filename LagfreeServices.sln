@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.26206.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LagfreeServices", "LagfreeServices\LagfreeServices.csproj", "{F26055A2-8462-4716-9088-9E46F7BB08CF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LagfreeAgent", "LagfreeAgent\LagfreeAgent.csproj", "{EE1417CD-300C-4727-912E-C9579A07F776}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LagfreeInstaller", "LagfreeInstaller\LagfreeInstaller.csproj", "{8AA0A3D9-6A89-48B1-ADB8-C80F69FA605C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F26055A2-8462-4716-9088-9E46F7BB08CF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F26055A2-8462-4716-9088-9E46F7BB08CF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F26055A2-8462-4716-9088-9E46F7BB08CF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F26055A2-8462-4716-9088-9E46F7BB08CF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EE1417CD-300C-4727-912E-C9579A07F776}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EE1417CD-300C-4727-912E-C9579A07F776}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EE1417CD-300C-4727-912E-C9579A07F776}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EE1417CD-300C-4727-912E-C9579A07F776}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8AA0A3D9-6A89-48B1-ADB8-C80F69FA605C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8AA0A3D9-6A89-48B1-ADB8-C80F69FA605C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8AA0A3D9-6A89-48B1-ADB8-C80F69FA605C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8AA0A3D9-6A89-48B1-ADB8-C80F69FA605C}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
