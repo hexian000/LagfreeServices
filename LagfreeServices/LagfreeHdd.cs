@@ -176,7 +176,7 @@ namespace LagfreeServices
                     Restrained.Add(pid, rproc);
                     if (rproc.Revert)
                     {
-                        log.AppendLine($"已限制进程。 进程{pid} \"{pname}\" 在过去2秒内读写{rw}字节");
+                        log.AppendLine($"已限制进程。 进程{pid} \"{pname}\" 在过去2秒内造成读写压力{rw}");
                         RestrainPerSample--;
                         if (RestrainPerSample <= 0) break;
                     }
@@ -219,6 +219,7 @@ namespace LagfreeServices
 
         private List<KeyValuePair<int, ulong>> ObtainPerProcessUsage()
         {
+            const int ClusterSize = 4096;
             List<KeyValuePair<int, ulong>> IOBytes;
             SortedDictionary<int, IO_COUNTERS> Counts = new SortedDictionary<int, IO_COUNTERS>();
             HashSet<int> IgnoredPids = Lagfree.GetForegroundPids();
@@ -242,7 +243,10 @@ namespace LagfreeServices
                             IOBytes.Add(new KeyValuePair<int, ulong>(proc.Id,
                                 (curr.ReadTransferCount - last.ReadTransferCount) +
                                 (curr.WriteTransferCount - last.WriteTransferCount) +
-                                (curr.OtherTransferCount - last.OtherTransferCount)
+                                (curr.OtherTransferCount - last.OtherTransferCount) +
+                                (curr.ReadOperationCount - last.ReadOperationCount) * ClusterSize +
+                                (curr.WriteOperationCount - last.WriteOperationCount) * ClusterSize +
+                                (curr.OtherOperationCount - last.OtherOperationCount) * ClusterSize
                                 ));
                         }
                     }
