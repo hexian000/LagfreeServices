@@ -38,11 +38,11 @@ namespace LagfreeServices
                     try
                     {
                         if (!HasNominalMediaRotationRate(int.Parse(inst.Split(' ')[0])))
-                            WriteLogEntry(3001, "注意：检测到系统安装在非旋转存储设备上");
+                            WriteLogEntry(3001, "注意：检测到OS安装在非旋转存储设备上");
                     }
                     catch (Win32Exception)
                     {
-                        WriteLogEntry(3001, "注意：无法检测到OS安装所在存储设备的旋转速度");
+                        WriteLogEntry(3002, "警告：无法检测到OS安装所在存储设备的旋转速度", true);
                     }
                     Disk = new PerformanceCounter(PhysicalDiskCategoryName, "% Idle Time", inst, true);
                     Disk.NextValue();
