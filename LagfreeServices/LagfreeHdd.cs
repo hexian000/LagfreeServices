@@ -35,18 +35,15 @@ namespace LagfreeServices
                 if (inst == "_Total") continue;
                 if (inst.ToLowerInvariant().Contains(SysDrive))
                 {
-                    try
+                    bool IsRotational = true;
+                    try { IsRotational = HasNominalMediaRotationRate(int.Parse(inst.Split(' ')[0])); }
+                    catch (Win32Exception) { }
+                    if (IsRotational)
                     {
-                        if (!HasNominalMediaRotationRate(int.Parse(inst.Split(' ')[0])))
-                            WriteLogEntry(3001, "注意：检测到系统安装在非旋转存储设备上");
+                        Disk = new PerformanceCounter(PhysicalDiskCategoryName, "% Idle Time", inst, true);
+                        Disk.NextSample();
+                        break;
                     }
-                    catch (Win32Exception)
-                    {
-                        WriteLogEntry(3001, "注意：无法检测到OS安装所在存储设备的旋转速度");
-                    }
-                    Disk = new PerformanceCounter(PhysicalDiskCategoryName, "% Idle Time", inst, true);
-                    Disk.NextValue();
-                    break;
                 }
             }
             if (Disk == null)
