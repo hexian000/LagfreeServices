@@ -226,8 +226,9 @@ namespace LagfreeServices
             HashSet<int> IgnoredPids = Lagfree.GetForegroundPids();
             Process[] procs = Process.GetProcesses();
             DateTime CountsTime = DateTime.UtcNow;
-            if ((LastCountsTime - CountsTime).TotalSeconds > 5) LastCounts = new SortedDictionary<int, IO_COUNTERS>();
+            if ((LastCountsTime - CountsTime).TotalMilliseconds >= CheckInterval * 2) LastCounts.Clear();
             IOBytes = new List<KeyValuePair<int, ulong>>(procs.Length);
+            Func<ulong, ulong, ulong> SafeSub = (a, b) => a >= b ? a - b : 0;
             foreach (var proc in procs)
             {
                 try
@@ -244,12 +245,14 @@ namespace LagfreeServices
                         {
                             IO_COUNTERS last = LastCounts[proc.Id];
                             IOBytes.Add(new KeyValuePair<int, ulong>(proc.Id,
-                                (curr.ReadTransferCount - last.ReadTransferCount) +
-                                (curr.WriteTransferCount - last.WriteTransferCount) +
-                                (curr.OtherTransferCount - last.OtherTransferCount) +
-                                (curr.ReadOperationCount - last.ReadOperationCount) * ClusterSize +
-                                (curr.WriteOperationCount - last.WriteOperationCount) * ClusterSize +
-                                (curr.OtherOperationCount - last.OtherOperationCount) * ClusterSize
+                                SafeSub(curr.ReadTransferCount, last.ReadTransferCount) +
+                                SafeSub(curr.WriteTransferCount, last.WriteTransferCount) +
+                                SafeSub(curr.OtherTransferCount, last.OtherTransferCount) +
+                                (
+                                SafeSub(curr.ReadOperationCount, last.ReadOperationCount) +
+                                SafeSub(curr.WriteOperationCount, last.WriteOperationCount) +
+                                SafeSub(curr.OtherOperationCount, last.OtherOperationCount)
+                                ) * ClusterSize
                                 ));
                         }
                     }

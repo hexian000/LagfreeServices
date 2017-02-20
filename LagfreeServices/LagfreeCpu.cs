@@ -200,7 +200,7 @@ namespace LagfreeServices
             HashSet<int> IgnoredPids = Lagfree.GetForegroundPids();
             Process[] procs = Process.GetProcesses();
             DateTime CountsTime = DateTime.UtcNow;
-            if ((LastCountsTime - CountsTime).TotalSeconds > 5) LastCounts = new SortedDictionary<int, double>();
+            if ((LastCountsTime - CountsTime).TotalMilliseconds >= CheckInterval * 2) LastCounts.Clear();
             CpuCounts = new List<KeyValuePair<int, double>>(procs.Length);
             foreach (var proc in procs)
             {
