@@ -37,7 +37,7 @@ namespace LagfreeServices
                 Lagfree.SetupCategory();
                 RestrainedCount = new PerformanceCounter(Lagfree.CounterCategoryName, Lagfree.CpuRestrainedCounterName, false);
                 LastCounts = new SortedDictionary<int, double>();
-                Restrained = new Dictionary<int, RestrainedProcess>();
+                Restrained = new Dictionary<int, CpuRestrainedProcess>();
                 UsageCheckTimer = new Timer(UsageCheck, null, CheckInterval, CheckInterval);
             }
         }
@@ -100,13 +100,13 @@ namespace LagfreeServices
 
         #region Monitor
 
-        struct RestrainedProcess
+        struct CpuRestrainedProcess
         {
             public bool Revert;
             public Process Process;
             public ProcessPriorityClass OriginalPriorityClass;
         }
-        private Dictionary<int, RestrainedProcess> Restrained;
+        private Dictionary<int, CpuRestrainedProcess> Restrained;
         private SortedDictionary<int, double> LastCounts;
 
         private void UsageCheck(object state)
@@ -131,7 +131,7 @@ namespace LagfreeServices
 
                     Process proc = null;
                     string pname = "<unknown>";
-                    RestrainedProcess rproc = new RestrainedProcess() { Revert = false, Process = null };
+                    CpuRestrainedProcess rproc = new CpuRestrainedProcess() { Revert = false, Process = null };
                     // Restrain process
                     try
                     {
@@ -152,7 +152,7 @@ namespace LagfreeServices
                     Restrained.Add(pid, rproc);
                     if (rproc.Revert)
                     {
-                        log.AppendLine($"已限制进程。 进程{pid} \"{pname}\" 在过去1秒内占用CPU时间{cputime}ms");
+                        log.AppendLine($"已限制进程。 进程{pid} \"{pname}\" 在过去1秒内占用造成CPU压力{cputime}");
                         RestrainPerSample--;
                         if (RestrainPerSample <= 0) break;
                     }
