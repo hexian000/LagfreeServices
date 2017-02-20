@@ -20,6 +20,7 @@ namespace LagfreeServices
         PerformanceCounter RestrainedCount = null;
         Timer UsageCheckTimer;
         object SafeAsyncLock = new object();
+        float RestrainThreshold;
 
         protected override void OnStart(string[] args)
         {
@@ -33,6 +34,7 @@ namespace LagfreeServices
             }
             else
             {
+                RestrainThreshold = (float)(100.0 - 90.0 / Environment.ProcessorCount);
                 if (Lagfree.MyPid < 0) using (var me = Process.GetCurrentProcess()) Lagfree.MyPid = me.Id;
                 Lagfree.SetupCategory();
                 RestrainedCount = new PerformanceCounter(Lagfree.CounterCategoryName, Lagfree.CpuRestrainedCounterName, false);
@@ -117,7 +119,7 @@ namespace LagfreeServices
                 int RestrainPerSample = 3;
                 float idle = CpuIdle.NextValue();
                 if (idle > 50) RevertAll();
-                if (idle > 10) return;
+                if (idle > RestrainThreshold) return;
                 var CpuTimes = ObtainPerProcessUsage();
                 double? prevTime = null;
                 StringBuilder log = new StringBuilder();
