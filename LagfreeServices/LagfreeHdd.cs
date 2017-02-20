@@ -130,6 +130,7 @@ namespace LagfreeServices
         }
         private Dictionary<int, HddRestrainedProcess> Restrained;
         private SortedDictionary<int, IO_COUNTERS> LastCounts;
+        private DateTime LastCountsTime;
 
         private void UsageCheck(object state)
         {
@@ -224,6 +225,8 @@ namespace LagfreeServices
             SortedDictionary<int, IO_COUNTERS> Counts = new SortedDictionary<int, IO_COUNTERS>();
             HashSet<int> IgnoredPids = Lagfree.GetForegroundPids();
             Process[] procs = Process.GetProcesses();
+            DateTime CountsTime = DateTime.UtcNow;
+            if ((LastCountsTime - CountsTime).TotalSeconds > 5) LastCounts = new SortedDictionary<int, IO_COUNTERS>();
             IOBytes = new List<KeyValuePair<int, ulong>>(procs.Length);
             foreach (var proc in procs)
             {
@@ -257,6 +260,7 @@ namespace LagfreeServices
             }
             IOBytes.Sort(new Comparison<KeyValuePair<int, ulong>>((x, y) => (y.Value > x.Value) ? 1 : ((x.Value > y.Value) ? -1 : 0)));
             LastCounts = Counts;
+            LastCountsTime = CountsTime;
             return IOBytes;
         }
 

@@ -108,6 +108,7 @@ namespace LagfreeServices
         }
         private Dictionary<int, CpuRestrainedProcess> Restrained;
         private SortedDictionary<int, double> LastCounts;
+        private DateTime LastCountsTime;
 
         private void UsageCheck(object state)
         {
@@ -198,6 +199,8 @@ namespace LagfreeServices
             SortedDictionary<int, double> Counts = new SortedDictionary<int, double>();
             HashSet<int> IgnoredPids = Lagfree.GetForegroundPids();
             Process[] procs = Process.GetProcesses();
+            DateTime CountsTime = DateTime.UtcNow;
+            if ((LastCountsTime - CountsTime).TotalSeconds > 5) LastCounts = new SortedDictionary<int, double>();
             CpuCounts = new List<KeyValuePair<int, double>>(procs.Length);
             foreach (var proc in procs)
             {
@@ -207,7 +210,6 @@ namespace LagfreeServices
                     if (pid == 0 || pid == 4 || pid == Lagfree.MyPid || pid == Lagfree.AgentPid
                         || IgnoredPids.Contains(pid)
                         || Lagfree.IgnoredProcessNames.Contains(proc.ProcessName)) continue;
-                    proc.Refresh();
                     double ptime = proc.TotalProcessorTime.TotalMilliseconds;
                     Counts.Add(pid, ptime);
                     if (LastCounts.ContainsKey(pid))
@@ -219,6 +221,7 @@ namespace LagfreeServices
             }
             CpuCounts.Sort(new Comparison<KeyValuePair<int, double>>((x, y) => Math.Sign((y.Value - x.Value))));
             LastCounts = Counts;
+            LastCountsTime = CountsTime;
             return CpuCounts;
         }
         void WriteLogEntry(int id, string message, bool error = false)
