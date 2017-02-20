@@ -59,7 +59,7 @@ namespace LagfreeServices
             {
                 Lagfree.SetupCategory();
                 RestrainedCount = new PerformanceCounter(Lagfree.CounterCategoryName, Lagfree.IoRestrainedCounterName, false);
-                Restrained = new Dictionary<int, RestrainedProcess>();
+                Restrained = new Dictionary<int, HddRestrainedProcess>();
                 LastCounts = new SortedDictionary<int, IO_COUNTERS>();
                 UsageCheckTimer = new Timer(UsageCheck, null, CheckInterval, CheckInterval);
             }
@@ -122,13 +122,13 @@ namespace LagfreeServices
 
         #region Monitor
 
-        struct RestrainedProcess
+        struct HddRestrainedProcess
         {
             public bool Revert;
             public Process Process;
             public int OriginalIoPriority;
         }
-        private Dictionary<int, RestrainedProcess> Restrained;
+        private Dictionary<int, HddRestrainedProcess> Restrained;
         private SortedDictionary<int, IO_COUNTERS> LastCounts;
 
         private void UsageCheck(object state)
@@ -154,7 +154,7 @@ namespace LagfreeServices
                     Process proc = null;
                     string pname = "<unknown>";
                     // Restrain process
-                    RestrainedProcess rproc = new RestrainedProcess() { Revert = false, Process = null };
+                    HddRestrainedProcess rproc = new HddRestrainedProcess() { Revert = false, Process = null };
                     try
                     {
                         proc = Process.GetProcessById(i.Key);
