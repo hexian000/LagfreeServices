@@ -148,7 +148,7 @@ namespace LagfreeServices
                     int pid = i.Key;
                     ulong rw = i.Value;
 
-                    if (rw < 1 || Restrained.ContainsKey(pid)) continue;
+                    if (rw < 4096 || Restrained.ContainsKey(pid)) continue;
                     if (prevRw != null) { if ((double)rw / prevRw < 0.8) continue; }
                     else prevRw = rw;
 

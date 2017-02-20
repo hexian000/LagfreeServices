@@ -128,7 +128,7 @@ namespace LagfreeServices
                     int pid = i.Key;
                     double cputime = i.Value;
 
-                    if (cputime < 100 || Restrained.ContainsKey(pid)) continue;
+                    if (cputime < 900 || Restrained.ContainsKey(pid)) continue;
                     if (prevTime != null) { if (cputime / prevTime < 0.8) continue; }
                     else prevTime = cputime;
 
