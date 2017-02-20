@@ -133,20 +133,19 @@ namespace LagfreeServices
             lock (SafeAsyncLock)
             {
                 int RestrainPerSample = 3;
-                StringBuilder log = new StringBuilder();
-                float diskIdle = 100;
-                diskIdle = Disk.NextValue();
+                float diskIdle = Disk.NextValue();
                 if (diskIdle > 50) RevertAll();
                 if (diskIdle > 10) return;
-                List<KeyValuePair<int, long>> IOBytes = ObtainPerProcessUsage();
-                long prevRw = -1;
+                List<KeyValuePair<int, ulong>> IOBytes = ObtainPerProcessUsage();
+                ulong? prevRw = null;
+                StringBuilder log = new StringBuilder();
                 foreach (var i in IOBytes)
                 {
                     int pid = i.Key;
-                    long rw = i.Value;
+                    ulong rw = i.Value;
 
                     if (rw < 1 || Restrained.ContainsKey(pid)) continue;
-                    if (prevRw >= 0) { if ((double)rw / prevRw < 0.8) continue; }
+                    if (prevRw != null) { if ((double)rw / prevRw < 0.8) continue; }
                     else prevRw = rw;
 
                     Process proc = null;
@@ -215,18 +214,13 @@ namespace LagfreeServices
             if (log.Length > 0) WriteLogEntry(1002, log.ToString());
         }
 
-        private List<KeyValuePair<int, long>> ObtainPerProcessUsage()
+        private List<KeyValuePair<int, ulong>> ObtainPerProcessUsage()
         {
-            List<KeyValuePair<int, long>> IOBytes;
+            List<KeyValuePair<int, ulong>> IOBytes;
             SortedDictionary<int, IO_COUNTERS> Counts = new SortedDictionary<int, IO_COUNTERS>();
             HashSet<int> IgnoredPids = Lagfree.GetForegroundPids();
-            //{
-            //    StringBuilder sb = new StringBuilder();
-            //    foreach (var i in IgnoredPids) sb.AppendLine("pid:" + i);
-            //    WriteLogEntry(3001, sb.ToString());
-            //}
             Process[] procs = Process.GetProcesses();
-            IOBytes = new List<KeyValuePair<int, long>>(procs.Length);
+            IOBytes = new List<KeyValuePair<int, ulong>>(procs.Length);
             foreach (var proc in procs)
             {
                 try
@@ -242,10 +236,10 @@ namespace LagfreeServices
                         if (LastCounts.ContainsKey(proc.Id))
                         {
                             IO_COUNTERS last = LastCounts[proc.Id];
-                            IOBytes.Add(new KeyValuePair<int, long>(proc.Id,
-                                ((long)curr.ReadTransferCount - (long)last.ReadTransferCount) +
-                                ((long)curr.WriteTransferCount - (long)last.WriteTransferCount) +
-                                ((long)curr.OtherTransferCount - (long)last.OtherTransferCount)
+                            IOBytes.Add(new KeyValuePair<int, ulong>(proc.Id,
+                                (curr.ReadTransferCount - last.ReadTransferCount) +
+                                (curr.WriteTransferCount - last.WriteTransferCount) +
+                                (curr.OtherTransferCount - last.OtherTransferCount)
                                 ));
                         }
                     }
@@ -254,7 +248,7 @@ namespace LagfreeServices
                 catch (InvalidOperationException) { }
                 catch (Exception ex) { WriteLogEntry(3000, ex.GetType().Name + ":" + ex.Message + "\n" + ex.StackTrace, true); }
             }
-            IOBytes.Sort(new Comparison<KeyValuePair<int, long>>((x, y) => Math.Sign(y.Value - x.Value)));
+            IOBytes.Sort(new Comparison<KeyValuePair<int, ulong>>((x, y) => (y.Value > x.Value) ? 1 : ((x.Value > y.Value) ? -1 : 0)));
             LastCounts = Counts;
             return IOBytes;
         }
