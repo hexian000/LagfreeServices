@@ -42,6 +42,7 @@ namespace LagfreeServices
                 Stop();
                 return;
             }
+            CpuIdle.NextValue();
             RestrainedAffinity = new IntPtr((1 << count) - 2);
             RestrainThreshold = (float)(100.0 - 90.0 / Environment.ProcessorCount);
             if (Lagfree.MyPid < 0) using (var me = Process.GetCurrentProcess()) Lagfree.MyPid = me.Id;
@@ -71,7 +72,7 @@ namespace LagfreeServices
 
         private void InternalResume()
         {
-            CpuIdle.NextSample();
+            CpuIdle.NextValue();
             UsageCheckTimer = new Timer(UsageCheck, null, CheckInterval, CheckInterval);
         }
 
