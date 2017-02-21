@@ -116,11 +116,10 @@ namespace LagfreeServices
         {
             lock (SafeAsyncLock)
             {
-                int RestrainPerSample = 3;
                 float idle = CpuIdle.NextValue();
                 if (idle > 50) RevertAll();
                 if (idle > RestrainThreshold) return;
-                var CpuTimes = ObtainPerProcessUsage();
+                var CpuTimes = ObtainPerProcessUsage(idle < 5);
                 StringBuilder log = new StringBuilder();
                 foreach (var i in CpuTimes)
                 {
@@ -139,7 +138,7 @@ namespace LagfreeServices
                         proc = Process.GetProcessById(i.Key);
                         pname = proc.ProcessName;
                         rproc.OriginalPriorityClass = proc.PriorityClass;
-                        if (rproc.OriginalPriorityClass != ProcessPriorityClass.Idle)
+                        if (rproc.OriginalPriorityClass != ProcessPriorityClass.Idle && rproc.OriginalPriorityClass != ProcessPriorityClass.BelowNormal)
                         {
                             proc.PriorityClass = ProcessPriorityClass.BelowNormal;
                             rproc.Process = proc;
@@ -154,8 +153,7 @@ namespace LagfreeServices
                     if (rproc.Revert)
                     {
                         log.AppendLine($"已限制进程。 进程{pid} \"{pname}\" 在过去1秒内占用CPU时间{cputime}ms");
-                        RestrainPerSample--;
-                        if (RestrainPerSample <= 0) break;
+                        break;
                     }
                 }
                 if (Lagfree.Verbose && log.Length > 0) WriteLogEntry(1001, log.ToString());
@@ -193,11 +191,12 @@ namespace LagfreeServices
             if (Lagfree.Verbose && log.Length > 0) WriteLogEntry(1002, log.ToString());
         }
 
-        private List<KeyValuePair<int, double>> ObtainPerProcessUsage()
+        private List<KeyValuePair<int, double>> ObtainPerProcessUsage(bool foregroundBoost = false)
         {
             List<KeyValuePair<int, double>> CpuCounts;
             SortedDictionary<int, double> Counts = new SortedDictionary<int, double>();
-            HashSet<int> IgnoredPids = Lagfree.GetForegroundPids();
+            StringBuilder log = new StringBuilder();
+            HashSet<int> ForegroundPids = Lagfree.GetForegroundPids();
             Process[] procs = Process.GetProcesses();
             DateTime CountsTime = DateTime.UtcNow;
             if ((LastCountsTime - CountsTime).TotalMilliseconds >= CheckInterval * 2) LastCounts.Clear();
@@ -207,9 +206,37 @@ namespace LagfreeServices
                 try
                 {
                     int pid = proc.Id;
+                    string pname = proc.ProcessName;
                     if (pid == 0 || pid == 4 || pid == Lagfree.MyPid || pid == Lagfree.AgentPid
-                        || IgnoredPids.Contains(pid)
                         || Lagfree.IgnoredProcessNames.Contains(proc.ProcessName)) continue;
+                    // Foreground Boost
+                    if (ForegroundPids.Contains(pid) && foregroundBoost)
+                    {
+                        var rproc = new CpuRestrainedProcess()
+                        {
+                            OriginalPriorityClass = proc.PriorityClass,
+                            Process = proc,
+                            Revert = true
+                        };
+                        try
+                        {
+                            if (rproc.OriginalPriorityClass != ProcessPriorityClass.AboveNormal
+                                && rproc.OriginalPriorityClass != ProcessPriorityClass.High
+                                && rproc.OriginalPriorityClass != ProcessPriorityClass.RealTime)
+                            {
+                                proc.PriorityClass = ProcessPriorityClass.AboveNormal;
+                                rproc.Process = proc;
+                                rproc.Revert = true;
+                            }
+                            log.AppendLine($"已加速前台进程。 进程{pid} \"{pname}\"");
+                        }
+                        catch (Exception ex)
+                        {
+                            WriteLogEntry(2002, $"加速前台进程失败，进程{pid} \"{pname}\"{Environment.NewLine}{ex.GetType().Name}：{ex.Message}", true);
+                        }
+                        Restrained.Add(pid, rproc);
+                    }
+                    // Obtain data
                     double ptime = proc.TotalProcessorTime.TotalMilliseconds;
                     Counts.Add(pid, ptime);
                     if (LastCounts.ContainsKey(pid))
