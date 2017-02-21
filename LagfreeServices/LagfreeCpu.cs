@@ -259,6 +259,7 @@ namespace LagfreeServices
                 catch (InvalidOperationException) { }
                 catch (Exception ex) { WriteLogEntry(3000, ex.GetType().Name + ":" + ex.Message + "\n" + ex.StackTrace, true); }
             }
+            if (log.Length > 0) WriteLogEntry(1003, log.ToString());
             CpuCounts.Sort(new Comparison<KeyValuePair<int, double>>((x, y) => Math.Sign((y.Value - x.Value))));
             LastCounts = Counts;
             LastCountsTime = CountsTime;

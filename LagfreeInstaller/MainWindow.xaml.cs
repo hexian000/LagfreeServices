@@ -1,4 +1,5 @@
-﻿using System.ComponentModel;
+﻿using System;
+using System.ComponentModel;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -17,6 +18,23 @@ namespace LagfreeInstaller
         public MainWindow()
         {
             InitializeComponent();
+            EnableUI = () =>
+            {
+                Cursor = Cursors.Arrow;
+                Effect = null;
+                CheckInstallation();
+                Busy = false;
+            };
+            DisableUI = () =>
+            {
+                Cursor = Cursors.Wait;
+                InstallButton.IsEnabled = false;
+                UninstallButton.IsEnabled = false;
+                Effect = new BlurEffect();
+                Busy = true;
+            };
+            SuccessMsg = () => MessageBox.Show("操作完成", "Lagfree Services", MessageBoxButton.OK, MessageBoxImage.Information);
+            FailedMsg = () => MessageBox.Show("操作完成，但过程中发生了错误", "Lagfree Services", MessageBoxButton.OK, MessageBoxImage.Exclamation);
         }
 
         private bool PerformUpdate = false;
@@ -42,7 +60,7 @@ namespace LagfreeInstaller
                     App.ProgramStarted.Reset();
                 }
             }).Start();
-            CheckInstallation();
+            EnableUI();
         }
 
         private void Window_Closing(object sender, CancelEventArgs e)
@@ -51,61 +69,38 @@ namespace LagfreeInstaller
         }
 
         bool Busy = false;
-
+        private Action EnableUI, DisableUI;
+        private Action SuccessMsg, FailedMsg;
         private void InstallButton_Click(object sender, RoutedEventArgs e)
         {
-            Cursor = Cursors.Wait;
-            InstallButton.IsEnabled = false;
-            Effect = new BlurEffect();
-            Busy = true;
+            DisableUI();
             new Task(() =>
             {
                 try
                 {
                     if (PerformUpdate) LagfreeServicesInstall.PerformUninstall();
                     if (LagfreeServicesInstall.PerformInstall())
-                        Dispatcher.InvokeAsync(() => MessageBox.Show("安装完成", "Lagfree Services", MessageBoxButton.OK, MessageBoxImage.Information));
+                        Dispatcher.InvokeAsync(SuccessMsg);
                     else
-                        Dispatcher.InvokeAsync(() => MessageBox.Show("安装完成，但安装过程中发生了错误", "Lagfree Services", MessageBoxButton.OK, MessageBoxImage.Exclamation));
+                        Dispatcher.InvokeAsync(FailedMsg);
                 }
-                finally
-                {
-                    Busy = false;
-                    Dispatcher.InvokeAsync(() =>
-                    {
-                        Cursor = Cursors.Arrow;
-                        Effect = null;
-                        CheckInstallation();
-                    });
-                }
+                finally { Dispatcher.InvokeAsync(EnableUI); }
             }).Start();
         }
 
         private void UninstallButton_Click(object sender, RoutedEventArgs e)
         {
-            Cursor = Cursors.Wait;
-            UninstallButton.IsEnabled = false;
-            Effect = new BlurEffect();
-            Busy = true;
+            DisableUI();
             new Task(() =>
             {
                 try
                 {
                     if (LagfreeServicesInstall.PerformUninstall())
-                        Dispatcher.InvokeAsync(() => MessageBox.Show("卸载完成", "Lagfree Services", MessageBoxButton.OK, MessageBoxImage.Information));
+                        Dispatcher.InvokeAsync(SuccessMsg);
                     else
-                        Dispatcher.InvokeAsync(() => MessageBox.Show("卸载完成，但卸载过程中发生了错误", "Lagfree Services", MessageBoxButton.OK, MessageBoxImage.Exclamation));
+                        Dispatcher.InvokeAsync(FailedMsg);
                 }
-                finally
-                {
-                    Busy = false;
-                    Dispatcher.InvokeAsync(() =>
-                    {
-                        Cursor = Cursors.Arrow;
-                        Effect = null;
-                        CheckInstallation();
-                    });
-                }
+                finally { Dispatcher.InvokeAsync(EnableUI); }
             }).Start();
         }
     }
