@@ -69,7 +69,6 @@ namespace LagfreeServices
         {
             InternalPause();
             InternalDispose();
-            GC.Collect();
         }
 
         private void InternalPause()
