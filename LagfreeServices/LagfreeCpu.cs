@@ -216,31 +216,35 @@ namespace LagfreeServices
                     if (pid == 0 || pid == 4 || pid == Lagfree.MyPid || pid == Lagfree.AgentPid
                         || Lagfree.IgnoredProcessNames.Contains(proc.ProcessName)) continue;
                     // Foreground Boost
-                    if (ForegroundPids.Contains(pid) && foregroundBoost)
+                    if (ForegroundPids.Contains(pid))
                     {
-                        var rproc = new CpuRestrainedProcess()
+                        if (foregroundBoost)
                         {
-                            OriginalPriorityClass = proc.PriorityClass,
-                            Process = proc,
-                            Revert = true
-                        };
-                        try
-                        {
-                            if (rproc.OriginalPriorityClass != ProcessPriorityClass.AboveNormal
-                                && rproc.OriginalPriorityClass != ProcessPriorityClass.High
-                                && rproc.OriginalPriorityClass != ProcessPriorityClass.RealTime)
+                            var rproc = new CpuRestrainedProcess()
                             {
-                                proc.PriorityClass = ProcessPriorityClass.AboveNormal;
-                                rproc.Process = proc;
-                                rproc.Revert = true;
+                                OriginalPriorityClass = proc.PriorityClass,
+                                Process = proc,
+                                Revert = true
+                            };
+                            try
+                            {
+                                if (rproc.OriginalPriorityClass != ProcessPriorityClass.AboveNormal
+                                    && rproc.OriginalPriorityClass != ProcessPriorityClass.High
+                                    && rproc.OriginalPriorityClass != ProcessPriorityClass.RealTime)
+                                {
+                                    proc.PriorityClass = ProcessPriorityClass.AboveNormal;
+                                    rproc.Process = proc;
+                                    rproc.Revert = true;
+                                }
+                                log.AppendLine($"已加速前台进程。 进程{pid} \"{pname}\"");
                             }
-                            log.AppendLine($"已加速前台进程。 进程{pid} \"{pname}\"");
+                            catch (Exception ex)
+                            {
+                                WriteLogEntry(2002, $"加速前台进程失败，进程{pid} \"{pname}\"{Environment.NewLine}{ex.GetType().Name}：{ex.Message}", true);
+                            }
+                            Restrained.Add(pid, rproc);
                         }
-                        catch (Exception ex)
-                        {
-                            WriteLogEntry(2002, $"加速前台进程失败，进程{pid} \"{pname}\"{Environment.NewLine}{ex.GetType().Name}：{ex.Message}", true);
-                        }
-                        Restrained.Add(pid, rproc);
+                        continue;
                     }
                     // Obtain data
                     double ptime = proc.TotalProcessorTime.TotalMilliseconds;
