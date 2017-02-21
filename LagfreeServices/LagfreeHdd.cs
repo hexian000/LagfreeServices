@@ -22,6 +22,7 @@ namespace LagfreeServices
         PerformanceCounter RestrainedCount = null;
         Timer UsageCheckTimer;
         object SafeAsyncLock = new object();
+        float RestrainThreshold = 10, IdleThreshold = 50;
 
         protected override void OnStart(string[] args)
         {
@@ -137,8 +138,8 @@ namespace LagfreeServices
             {
                 int RestrainPerSample = 3;
                 float diskIdle = Disk.NextValue();
-                if (diskIdle > 50) RevertAll();
-                if (diskIdle > 10) return;
+                if (diskIdle > IdleThreshold) RevertAll();
+                if (diskIdle > RestrainThreshold) return;
                 List<KeyValuePair<int, ulong>> IOBytes = ObtainPerProcessUsage();
                 ulong? prevRw = null;
                 StringBuilder log = new StringBuilder();
