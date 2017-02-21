@@ -148,7 +148,7 @@ namespace LagfreeServices
                     int pid = i.Key;
                     ulong rw = i.Value;
 
-                    if (rw < 4096 || Restrained.ContainsKey(pid)) continue;
+                    if (rw < 512 || Restrained.ContainsKey(pid)) continue;
                     if (prevRw != null) { if ((double)rw / prevRw < 0.8) continue; }
                     else prevRw = rw;
 
@@ -182,7 +182,7 @@ namespace LagfreeServices
                         if (RestrainPerSample <= 0) break;
                     }
                 }
-                if (log.Length > 0) WriteLogEntry(1001, log.ToString());
+                if (Lagfree.Verbose && log.Length > 0) WriteLogEntry(1001, log.ToString());
                 RestrainedCount.RawValue = Restrained.Count;
             }
         }
@@ -215,12 +215,11 @@ namespace LagfreeServices
             }
             Restrained.Clear();
             RestrainedCount.RawValue = 0;
-            if (log.Length > 0) WriteLogEntry(1002, log.ToString());
+            if (Lagfree.Verbose && log.Length > 0) WriteLogEntry(1002, log.ToString());
         }
 
         private List<KeyValuePair<int, ulong>> ObtainPerProcessUsage()
         {
-            const int ClusterSize = 4096;
             List<KeyValuePair<int, ulong>> IOBytes;
             SortedDictionary<int, IO_COUNTERS> Counts = new SortedDictionary<int, IO_COUNTERS>();
             HashSet<int> IgnoredPids = Lagfree.GetForegroundPids();
@@ -252,7 +251,7 @@ namespace LagfreeServices
                                 SafeSub(curr.ReadOperationCount, last.ReadOperationCount) +
                                 SafeSub(curr.WriteOperationCount, last.WriteOperationCount) +
                                 SafeSub(curr.OtherOperationCount, last.OtherOperationCount)
-                                ) * ClusterSize
+                                )
                                 ));
                         }
                     }

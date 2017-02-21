@@ -160,7 +160,7 @@ namespace LagfreeServices
                         if (RestrainPerSample <= 0) break;
                     }
                 }
-                if (log.Length > 0) WriteLogEntry(1001, log.ToString());
+                if (Lagfree.Verbose && log.Length > 0) WriteLogEntry(1001, log.ToString());
                 RestrainedCount.RawValue = Restrained.Count;
             }
         }
@@ -192,7 +192,7 @@ namespace LagfreeServices
             }
             Restrained.Clear();
             RestrainedCount.RawValue = 0;
-            if (log.Length > 0) WriteLogEntry(1002, log.ToString());
+            if (Lagfree.Verbose && log.Length > 0) WriteLogEntry(1002, log.ToString());
         }
 
         private List<KeyValuePair<int, double>> ObtainPerProcessUsage()
