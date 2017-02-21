@@ -159,7 +159,7 @@ namespace LagfreeServices
                     Restrained.Add(pid, rproc);
                     if (rproc.Revert)
                     {
-                        log.AppendLine($"已限制进程。 进程{pid} \"{pname}\" 在过去1秒内造成CPU压力{cputime}");
+                        log.AppendLine($"已限制进程。 进程{pid} \"{pname}\" 在过去{CheckInterval}ms内造成CPU压力{cputime}");
                         break;
                     }
                 }

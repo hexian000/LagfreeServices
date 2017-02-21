@@ -177,7 +177,7 @@ namespace LagfreeServices
                     Restrained.Add(pid, rproc);
                     if (rproc.Revert)
                     {
-                        log.AppendLine($"已限制进程。 进程{pid} \"{pname}\" 在过去2秒内造成读写压力{rw}");
+                        log.AppendLine($"已限制进程。 进程{pid} \"{pname}\" 在过去{CheckInterval}ms内造成读写压力{rw}");
                         RestrainPerSample--;
                         if (RestrainPerSample <= 0) break;
                     }
