@@ -84,7 +84,7 @@ namespace LagfreeServices
 
         private void InternalResume()
         {
-            Disk.NextSample();
+            Disk.NextValue();
             UsageCheckTimer = new Timer(UsageCheck, null, CheckInterval, CheckInterval);
         }
 
@@ -169,6 +169,7 @@ namespace LagfreeServices
                             rproc.Revert = true;
                         }
                     }
+                    catch (ArgumentException) { }
                     catch (Exception ex)
                     {
                         WriteLogEntry(2002, $"限制进程失败，进程{pid} \"{pname}\"{Environment.NewLine}{ex.GetType().Name}：{ex.Message}", true);
