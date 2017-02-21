@@ -115,7 +115,7 @@ namespace LagfreeServices
             public bool Revert;
             public Process Process;
             public ProcessPriorityClass OriginalPriorityClass;
-            public IntPtr OriginalAffinity;
+            public int OriginalAffinity;
         }
         private Dictionary<int, CpuRestrainedProcess> Restrained;
         private SortedDictionary<int, double> LastCounts;
@@ -147,7 +147,7 @@ namespace LagfreeServices
                         proc = Process.GetProcessById(i.Key);
                         pname = proc.ProcessName;
                         rproc.OriginalPriorityClass = proc.PriorityClass;
-                        rproc.OriginalAffinity = proc.ProcessorAffinity;
+                        rproc.OriginalAffinity = proc.ProcessorAffinity.ToInt32();
                         if (rproc.OriginalPriorityClass != ProcessPriorityClass.Idle && rproc.OriginalPriorityClass != ProcessPriorityClass.BelowNormal)
                         {
                             proc.PriorityClass = ProcessPriorityClass.BelowNormal;
@@ -188,7 +188,7 @@ namespace LagfreeServices
                         {
                             pname = i.Value.Process.ProcessName;
                             i.Value.Process.PriorityClass = i.Value.OriginalPriorityClass;
-                            i.Value.Process.ProcessorAffinity = i.Value.OriginalAffinity;
+                            i.Value.Process.ProcessorAffinity = new IntPtr(i.Value.OriginalAffinity);
                             log.AppendLine($"已恢复进程。 进程{i.Key} \"{pname}\"");
                         }
                     }
@@ -227,6 +227,7 @@ namespace LagfreeServices
                         var rproc = new CpuRestrainedProcess()
                         {
                             OriginalPriorityClass = proc.PriorityClass,
+                            OriginalAffinity = proc.ProcessorAffinity.ToInt32(),
                             Process = proc,
                             Revert = true
                         };
