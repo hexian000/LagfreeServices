@@ -121,16 +121,14 @@ namespace LagfreeServices
                 if (idle > 50) RevertAll();
                 if (idle > RestrainThreshold) return;
                 var CpuTimes = ObtainPerProcessUsage();
-                double? prevTime = null;
                 StringBuilder log = new StringBuilder();
                 foreach (var i in CpuTimes)
                 {
                     int pid = i.Key;
                     double cputime = i.Value;
 
-                    if (cputime < 900 || Restrained.ContainsKey(pid)) continue;
-                    if (prevTime != null) { if (cputime / prevTime < 0.8) continue; }
-                    else prevTime = cputime;
+                    if (cputime < 900) break;
+                    if (Restrained.ContainsKey(pid)) continue;
 
                     Process proc = null;
                     string pname = "<unknown>";
@@ -155,7 +153,7 @@ namespace LagfreeServices
                     Restrained.Add(pid, rproc);
                     if (rproc.Revert)
                     {
-                        log.AppendLine($"已限制进程。 进程{pid} \"{pname}\" 在过去1秒内占用造成CPU压力{cputime}");
+                        log.AppendLine($"已限制进程。 进程{pid} \"{pname}\" 在过去1秒内占用CPU时间{cputime}ms");
                         RestrainPerSample--;
                         if (RestrainPerSample <= 0) break;
                     }

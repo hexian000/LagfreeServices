@@ -34,7 +34,7 @@ namespace LagfreeServices
         {
             if (UsageCheckTimer != null)
             {
-                lock(SafeAsyncLock)
+                lock (SafeAsyncLock)
                     UsageCheckTimer.Dispose();
                 UsageCheckTimer = null;
             }
@@ -49,7 +49,7 @@ namespace LagfreeServices
         {
             if (TrimTask != null) return;
             if (DateTime.UtcNow < NextTrim) return;
-            lock(SafeAsyncLock)
+            lock (SafeAsyncLock)
             {
                 ComputerInfo ci = new ComputerInfo();
                 double availPhy = (double)ci.AvailablePhysicalMemory / ci.TotalPhysicalMemory;
@@ -68,14 +68,16 @@ namespace LagfreeServices
 
         private void TrimAllProcesses()
         {
+            WriteLogEntry(1001, "缩减进程工作集已开始");
             StringBuilder log = new StringBuilder();
+            log.AppendLine("缩减进程工作集已结束");
             try
             {
                 var procs = Process.GetProcesses();
                 foreach (var proc in procs)
                 {
                     int pid = proc.Id;
-                    if (pid == 0 || pid == 4) continue;
+                    if (pid == 0 || pid == 4 || proc.HasExited) continue;
                     string pname = "<unknown>";
                     try
                     {
@@ -83,6 +85,7 @@ namespace LagfreeServices
                         if (IgnoreProcessNames.Contains(pname)) continue;
                         Win32Utils.TrimProcessWorkingSet(proc.SafeHandle);
                         log.AppendLine($"缩减进程工作集成功，进程{pid} \"{pname}\"");
+                        Thread.Sleep(200);
                     }
                     catch (Exception ex)
                     {
@@ -96,7 +99,7 @@ namespace LagfreeServices
 
         #endregion
 
-        void WriteLogEntry(int id, string message, bool error = false) 
+        void WriteLogEntry(int id, string message, bool error = false)
             => EventLog.WriteEntry(message, error ? EventLogEntryType.Error : EventLogEntryType.Information, id);
     }
 }
