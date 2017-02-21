@@ -126,7 +126,7 @@ namespace LagfreeServices
         {
             public bool Revert;
             public Process Process;
-            public int OriginalIoPriority;
+            public int OriginalIoPriority, NewIoPriority;
         }
         private Dictionary<int, HddRestrainedProcess> Restrained;
         private SortedDictionary<int, IO_COUNTERS> LastCounts;
@@ -136,56 +136,61 @@ namespace LagfreeServices
         {
             lock (SafeAsyncLock)
             {
-                int RestrainPerSample = 3;
                 float diskIdle = Disk.NextValue();
                 if (diskIdle > IdleThreshold) RevertAll();
                 if (diskIdle > RestrainThreshold) return;
-                List<KeyValuePair<int, ulong>> IOBytes = ObtainPerProcessUsage();
-                ulong? prevRw = null;
-                StringBuilder log = new StringBuilder();
-                foreach (var i in IOBytes)
+                RestrainProcess(ObtainPerProcessUsage());
+            }
+        }
+
+        private void RestrainProcess(List<KeyValuePair<int, ulong>> IOBytes)
+        {
+            int RestrainPerSample = 3;
+            ulong? prevRw = null;
+            StringBuilder log = new StringBuilder();
+            foreach (var i in IOBytes)
+            {
+                int pid = i.Key;
+                ulong rw = i.Value;
+
+                if (rw < 512 || Restrained.ContainsKey(pid)) continue;
+                if (prevRw != null) { if ((double)rw / prevRw < 0.8) continue; }
+                else prevRw = rw;
+
+                Process proc = null;
+                string pname = "<unknown>";
+                // Restrain process
+                HddRestrainedProcess rproc = new HddRestrainedProcess() { Revert = false, Process = null };
+                try
                 {
-                    int pid = i.Key;
-                    ulong rw = i.Value;
-
-                    if (rw < 512 || Restrained.ContainsKey(pid)) continue;
-                    if (prevRw != null) { if ((double)rw / prevRw < 0.8) continue; }
-                    else prevRw = rw;
-
-                    Process proc = null;
-                    string pname = "<unknown>";
-                    // Restrain process
-                    HddRestrainedProcess rproc = new HddRestrainedProcess() { Revert = false, Process = null };
-                    try
+                    proc = Process.GetProcessById(i.Key);
+                    pname = proc.ProcessName;
+                    SafeProcessHandle hProc = proc.SafeHandle;
+                    rproc.OriginalIoPriority = GetIOPriority(hProc);
+                    if (rproc.OriginalIoPriority > 0)
                     {
-                        proc = Process.GetProcessById(i.Key);
-                        pname = proc.ProcessName;
-                        SafeProcessHandle hProc = proc.SafeHandle;
-                        rproc.OriginalIoPriority = GetIOPriority(hProc);
-                        if (rproc.OriginalIoPriority > 0)
-                        {
-                            SetIOPriority(hProc, 0);
-                            rproc.Process = proc;
-                            rproc.Revert = true;
-                        }
-                    }
-                    catch (ArgumentException) { }
-                    catch (Exception ex)
-                    {
-                        WriteLogEntry(2002, $"限制进程失败，进程{pid} \"{pname}\"{Environment.NewLine}{ex.GetType().Name}：{ex.Message}", true);
-                    }
-                    finally { if (!rproc.Revert) proc?.Dispose(); }
-                    Restrained.Add(pid, rproc);
-                    if (rproc.Revert)
-                    {
-                        log.AppendLine($"已限制进程。 进程{pid} \"{pname}\" 在过去{CheckInterval}ms内造成读写压力{rw}");
-                        RestrainPerSample--;
-                        if (RestrainPerSample <= 0) break;
+                        SetIOPriority(hProc, 0);
+                        rproc.Process = proc;
+                        rproc.Revert = true;
+                        rproc.NewIoPriority = 0;
                     }
                 }
-                if (Lagfree.Verbose && log.Length > 0) WriteLogEntry(1001, log.ToString());
-                RestrainedCount.RawValue = Restrained.Count;
+                catch (ArgumentException) { }
+                catch (Exception ex)
+                {
+                    WriteLogEntry(2002, $"限制进程失败，进程{pid} \"{pname}\"{Environment.NewLine}{ex.GetType().Name}：{ex.Message}", true);
+                }
+                finally { if (!rproc.Revert) proc?.Dispose(); }
+                Restrained.Add(pid, rproc);
+                if (rproc.Revert)
+                {
+                    log.AppendLine($"已限制进程。 进程{pid} \"{pname}\" 在过去{CheckInterval}ms内造成读写压力{rw}");
+                    RestrainPerSample--;
+                    if (RestrainPerSample <= 0) break;
+                }
             }
+            if (Lagfree.Verbose && log.Length > 0) WriteLogEntry(1001, log.ToString());
+            RestrainedCount.RawValue = Restrained.Count;
         }
 
         private void RevertAll()
@@ -204,7 +209,7 @@ namespace LagfreeServices
                         {
                             pname = i.Value.Process.ProcessName;
                             SafeProcessHandle hProc = i.Value.Process.SafeHandle;
-                            SetIOPriority(hProc, i.Value.OriginalIoPriority);
+                            if (GetIOPriority(hProc) == i.Value.NewIoPriority) SetIOPriority(hProc, i.Value.OriginalIoPriority);
                             log.AppendLine($"已恢复进程。 进程{i.Key} \"{pname}\"");
                         }
                     }
@@ -223,7 +228,7 @@ namespace LagfreeServices
         {
             List<KeyValuePair<int, ulong>> IOBytes;
             SortedDictionary<int, IO_COUNTERS> Counts = new SortedDictionary<int, IO_COUNTERS>();
-            HashSet<int> IgnoredPids = Lagfree.GetForegroundPids();
+            HashSet<int> ForegroundPids = Lagfree.GetForegroundPids();
             Process[] procs = Process.GetProcesses();
             DateTime CountsTime = DateTime.UtcNow;
             if ((LastCountsTime - CountsTime).TotalMilliseconds >= CheckInterval * 2) LastCounts.Clear();
@@ -235,7 +240,7 @@ namespace LagfreeServices
                 {
                     int pid = proc.Id;
                     if (pid == 0 || pid == 4 || pid == Lagfree.MyPid || pid == Lagfree.AgentPid
-                        || IgnoredPids.Contains(pid)
+                        || ForegroundPids.Contains(pid)
                         || Lagfree.IgnoredProcessNames.Contains(proc.ProcessName)) continue;
                     using (SafeProcessHandle hProcess = proc.SafeHandle)
                     {
@@ -265,6 +270,52 @@ namespace LagfreeServices
             LastCounts = Counts;
             LastCountsTime = CountsTime;
             return IOBytes;
+        }
+
+        private void ForegroundBoost()
+        {
+            StringBuilder log = new StringBuilder();
+            HashSet<int> ForegroundPids = Lagfree.GetForegroundPids();
+            Process[] procs = Process.GetProcesses();
+            foreach (var proc in procs)
+            {
+                try
+                {
+                    int pid = proc.Id;
+                    string pname = proc.ProcessName;
+                    if (pid == 0 || pid == 4 || pid == Lagfree.MyPid || pid == Lagfree.AgentPid
+                        || Lagfree.IgnoredProcessNames.Contains(proc.ProcessName)) continue;
+                    // Foreground Boost
+                    if (ForegroundPids.Contains(pid))
+                    {
+                        var rproc = new HddRestrainedProcess()
+                        {
+                            OriginalIoPriority = GetIOPriority(proc.SafeHandle),
+                            Process = proc,
+                            Revert = true
+                        };
+                        try
+                        {
+                            if (rproc.OriginalIoPriority <= 2)
+                            {
+                                SetIOPriority(proc.SafeHandle, 3);
+                                rproc.Process = proc;
+                                rproc.Revert = true;
+                                rproc.NewIoPriority = 3;
+                            }
+                            log.AppendLine($"已加速前台进程。 进程{pid} \"{pname}\"");
+                        }
+                        catch (Exception ex)
+                        {
+                            WriteLogEntry(2002, $"加速前台进程失败，进程{pid} \"{pname}\"{Environment.NewLine}{ex.GetType().Name}：{ex.Message}", true);
+                        }
+                        Restrained.Add(pid, rproc);
+                    }
+                    continue;
+                }
+                catch { }
+            }
+            if (log.Length > 0) WriteLogEntry(1003, log.ToString());
         }
 
         void WriteLogEntry(int id, string message, bool error = false)
