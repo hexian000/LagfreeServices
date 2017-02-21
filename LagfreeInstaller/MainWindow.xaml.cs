@@ -27,6 +27,8 @@ namespace LagfreeInstaller
             CanUnins = Directory.Exists(App.TargetDir);
             if (CanInst && CanUnins) { InstallButton.Content = "更新"; PerformUpdate = true; }
             else { InstallButton.Content = "安装"; PerformUpdate = false; }
+            InstallButton.IsEnabled = CanInst;
+            UninstallButton.IsEnabled = CanUnins;
         }
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
