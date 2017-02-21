@@ -18,30 +18,38 @@ namespace LagfreeServices
         const int CheckInterval = 1000;
         PerformanceCounter CpuIdle = null;
         PerformanceCounter RestrainedCount = null;
+        IntPtr RestrainedAffinity;
         Timer UsageCheckTimer;
         object SafeAsyncLock = new object();
         float RestrainThreshold;
 
         protected override void OnStart(string[] args)
         {
+            int count = Environment.ProcessorCount;
             try { CpuIdle = new PerformanceCounter("Processor", "% Idle Time", "_Total", true); }
             catch (Exception) { }
-            if (CpuIdle == null)
+            if (count < 1 || CpuIdle == null)
             {
                 WriteLogEntry(2001, "无法监控CPU", true);
                 ExitCode = 2001;
                 Stop();
+                return;
             }
-            else
+            if (count > 31)
             {
-                RestrainThreshold = (float)(100.0 - 90.0 / Environment.ProcessorCount);
-                if (Lagfree.MyPid < 0) using (var me = Process.GetCurrentProcess()) Lagfree.MyPid = me.Id;
-                Lagfree.SetupCategory();
-                RestrainedCount = new PerformanceCounter(Lagfree.CounterCategoryName, Lagfree.CpuRestrainedCounterName, false);
-                LastCounts = new SortedDictionary<int, double>();
-                Restrained = new Dictionary<int, CpuRestrainedProcess>();
-                UsageCheckTimer = new Timer(UsageCheck, null, CheckInterval, CheckInterval);
+                WriteLogEntry(2001, "CPU太多，此服务不支持拥有超过31个逻辑处理器的系统", true);
+                ExitCode = 2002;
+                Stop();
+                return;
             }
+            RestrainedAffinity = new IntPtr((1 << count) - 2);
+            RestrainThreshold = (float)(100.0 - 90.0 / Environment.ProcessorCount);
+            if (Lagfree.MyPid < 0) using (var me = Process.GetCurrentProcess()) Lagfree.MyPid = me.Id;
+            Lagfree.SetupCategory();
+            RestrainedCount = new PerformanceCounter(Lagfree.CounterCategoryName, Lagfree.CpuRestrainedCounterName, false);
+            LastCounts = new SortedDictionary<int, double>();
+            Restrained = new Dictionary<int, CpuRestrainedProcess>();
+            UsageCheckTimer = new Timer(UsageCheck, null, CheckInterval, CheckInterval);
         }
 
         protected override void OnStop()
@@ -107,6 +115,7 @@ namespace LagfreeServices
             public bool Revert;
             public Process Process;
             public ProcessPriorityClass OriginalPriorityClass;
+            public IntPtr OriginalAffinity;
         }
         private Dictionary<int, CpuRestrainedProcess> Restrained;
         private SortedDictionary<int, double> LastCounts;
@@ -138,9 +147,11 @@ namespace LagfreeServices
                         proc = Process.GetProcessById(i.Key);
                         pname = proc.ProcessName;
                         rproc.OriginalPriorityClass = proc.PriorityClass;
+                        rproc.OriginalAffinity = proc.ProcessorAffinity;
                         if (rproc.OriginalPriorityClass != ProcessPriorityClass.Idle && rproc.OriginalPriorityClass != ProcessPriorityClass.BelowNormal)
                         {
                             proc.PriorityClass = ProcessPriorityClass.BelowNormal;
+                            proc.ProcessorAffinity = RestrainedAffinity;
                             rproc.Process = proc;
                             rproc.Revert = true;
                         }
@@ -177,6 +188,7 @@ namespace LagfreeServices
                         {
                             pname = i.Value.Process.ProcessName;
                             i.Value.Process.PriorityClass = i.Value.OriginalPriorityClass;
+                            i.Value.Process.ProcessorAffinity = i.Value.OriginalAffinity;
                             log.AppendLine($"已恢复进程。 进程{i.Key} \"{pname}\"");
                         }
                     }
