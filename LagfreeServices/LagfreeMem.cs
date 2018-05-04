@@ -85,7 +85,6 @@ namespace LagfreeServices
                         if (IgnoreProcessNames.Contains(pname)) continue;
                         Win32Utils.TrimProcessWorkingSet(proc.SafeHandle);
                         log.AppendLine($"缩减进程工作集成功，进程{pid} \"{pname}\"");
-                        Thread.Sleep(200);
                     }
                     catch (Exception ex)
                     {
