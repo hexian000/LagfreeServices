@@ -40,7 +40,7 @@ namespace LagfreeAgent
             if (NativeMethods.IsWindowVisible(hwnd))
             {
                 NativeMethods.GetWindowThreadProcessId(hwnd, out int pid);
-                if (!pids.Contains(pid)) pids.Add(pid);
+                pids.Add(pid);
             }
             return true;
         }
