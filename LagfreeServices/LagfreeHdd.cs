@@ -233,8 +233,8 @@ namespace LagfreeServices
             DateTime CountsTime = DateTime.UtcNow;
             if ((LastCountsTime - CountsTime).TotalMilliseconds >= CheckInterval * 2) LastCounts.Clear();
             IOBytes = new List<KeyValuePair<int, ulong>>(procs.Length);
-            Func<ulong, ulong, ulong> SafeSub = (a, b) => a >= b ? a - b : 0;
-            foreach (var proc in procs)
+			ulong SafeSub(ulong a, ulong b) => a >= b ? a - b : 0;
+			foreach (var proc in procs)
             {
                 try
                 {
