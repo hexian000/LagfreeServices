@@ -8,7 +8,7 @@ namespace LagfreeAgent
     class Win32Utils
     {
 
-        internal class NativeMethods
+        private static class NativeMethods
         {
             public delegate bool EnumWindowsProc(IntPtr hwnd, ref object lParam);
             [DllImport("user32.dll", SetLastError = true)]

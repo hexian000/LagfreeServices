@@ -7,7 +7,7 @@ namespace LagfreeServices
 {
     internal class Win32Utils
     {
-        private class NativeMethods
+        private static class NativeMethods
         {
             [StructLayout(LayoutKind.Sequential)]
             public class SECURITY_ATTRIBUTES
