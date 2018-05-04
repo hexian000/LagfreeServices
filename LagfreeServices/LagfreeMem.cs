@@ -21,7 +21,7 @@ namespace LagfreeServices
         object SafeAsyncLock = new object();
         DateTime NextTrim;
         Task TrimTask = null;
-        HashSet<string> IgnoreProcessNames;
+        ISet<string> IgnoreProcessNames;
 
         protected override void OnStart(string[] args)
         {
