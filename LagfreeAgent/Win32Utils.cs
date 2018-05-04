@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 
 namespace LagfreeAgent
 {
-    class Win32Utils
+	internal static class Win32Utils
     {
 
         private static class NativeMethods
