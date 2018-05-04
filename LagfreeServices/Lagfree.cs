@@ -10,7 +10,7 @@ namespace LagfreeServices
 {
     internal class Lagfree
     {
-        internal const bool Verbose = true;
+        internal const bool Verbose = false;
         internal static HashSet<string> IgnoredProcessNames = new HashSet<string>() { "Memory Compression", "MsMpEng", "services", "NisSrv", "csrss", "lsass", "smss", "wininit", "winlogon" };
         internal static int MyPid = -1;
 
